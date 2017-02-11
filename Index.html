@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+     <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body>
+    <script src="js/script.js"></script>
+    <div class="container">
+      <div class="options-box">
+        <h1>Rod's Home Town</h1>
+        <div>
+          <h4>Filter on:</h4>
+          <select id="filter">
+            <option>All Locations</option>
+            <option>Daily Grind</option>
+            <option>Schools</option>
+            <option>Restaurants</option>
+          </select>
+        </div>
+        <div id="loc-listings">
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+    <!-- Load drop down filter and 
+         list of all locations -->
+    <script>
+      document.getElementById('filter').addEventListener('change', displaylist);
+      document.getElementById('filter').addEventListener('change', showListings);
+      displaylist();
+    </script>
+<!--
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
+-->
+    <!-- Load Google Maps asynchronously credit https://discussions.udacity.com/t/handling-google-maps-in-async-and-fallback/34282 -->
+    <script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUNm-fO01vgE5Y-jgkyncEMbbvvxUwmt8&v=3&callback=initMap" onerror="googleError()">
+    
+    </script>
+  </body>
+</html>
