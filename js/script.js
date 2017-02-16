@@ -2,21 +2,26 @@
 var map;
 var markers = [];
 var mainInfowindow;
+var infoWindowString ; //holds string for selected marker
+var resURL;
+  var resStreet;
+  var resCity ;
+  var resPhone;
 
 var locations = [
-  {title: 'Home', group: 'Daily Grind', location: {lat: 36.848624, lng: -119.755932}},
-  {title: 'Work', group: 'Daily Grind', location: {lat: 36.793786, lng: -119.795606}},
-  {title: 'High School', group: 'Schools', location: {lat: 36.889985, lng: -119.733462}},
-  {title: 'Elementary School', group: 'Schools', location: {lat: 36.776031, lng: -119.830358}},
-  {title: 'P.F. Chang Restaurant', group: 'Restaurants', location: {lat: 36.851713, lng: -119.790201}},
-  {title: 'BJ Brewhouse Restaurant', group: 'Restaurants', location: {lat: 36.808439, lng: -119.774648}}         
+  {title: "Sal's", group: 'Burritos', location: {lat: 36.845671, lng: -119.783075}},
+  {title: 'Casa Corona', group: 'Burritos', location: {lat: 36.838776646609254, lng: -119.75295066833496}},
+  {title: 'The Habit Burger Grill', group: 'Hamburgers', location: {lat: 36.858096,lng:-119.783509}},
+  {title: 'Panda Express', group: 'Noodles', location: {lat: 36.8531947559099, lng: -119.73028890098708}},
+  {title: 'P.F. Chang Restaurant', group: 'Noodles', location: {lat: 36.851430, lng: -119.790233}},
+  {title: 'BJ Brewhouse Restaurant', group: 'Hamburgers', location: {lat: 36.808439, lng: -119.774648}}         
 ];
 
       
 function displaylist(){
   var displayList = "";
   for (var i = 0; i < locations.length; i++) {
-    if (filter.value == "All Locations" || filter.value == locations[i].group) {
+    if (filter.value == "All Types" || filter.value == locations[i].group) {
       displayList += "<li><a onclick='selectClickedName(" + i + ")'>" + locations[i].title + "</a></li>";
     }
   }
@@ -43,16 +48,17 @@ function initMap() {
       animation: google.maps.Animation.DROP,
       id: i
     });
+    console.log("markerID=" + marker.id + "; i="+i + title);
     // Push the marker to our array of markers.
     markers.push(marker);
     // Create an onclick event to open an infowindow at each marker.
     marker.addListener('click', function() {
+      console.log("addListener: this title" + this.title);
       populateInfoWindow(this, mainInfowindow);
     });
   }
   showListings();
 }
-
 
 // Sets timer for animation;
 function stopAnimation(marker, infowindow) {
@@ -63,16 +69,73 @@ function stopAnimation(marker, infowindow) {
     setTimeout(function () {
         infowindow.close();
         marker.setIcon(infowindow.marker.defaultMarkerIcon);
-    }, 5000);
+    }, 8000);
 }
 
 function populateInfoWindow(marker, infowindow) {
+  var apiURL = 'https://api.foursquare.com/v2/venues/search';//?ll=';
+  var ClientID = "LJXW25X1PJ2PRLWV3BOLXAFLBRW0K2SM3FXEWWE4D2S2BCU2";
+  var ClientSecret ="MBLBOVBFP5MNCPIRNKWSXJ01OZWHJG1DUWVUX4Y1V3Q4CTNW";
+  var ClientVersion = '20170112';
+ 
   // Checks if infowindow is not already opened on this marker
   if (infowindow.marker != marker) {
+    
+    console.log("before bounce");
+
     infowindow.marker = marker;
-    infowindow.setContent('<div>' + marker.title + '</div>');
     infowindow.open(map, marker);
+
     infowindow.marker.setAnimation(google.maps.Animation.BOUNCE);
+    console.log("== populateInfoWindow before getFoursquareInfo-------------- " + infoWindowString)
+    //getFoursquareInfo(marker,infowindow);//Get foursquare info
+    console.log("====before ajax=  " + marker.id + ":" + locations[marker.id].title + "==" + locations[marker.id].location.lat + "," + locations[marker.id].location.lng);
+    $.ajax({
+      url:apiURL,
+      dataType:"json",
+      data:{
+        ll:locations[marker.id].location.lat + "," + locations[marker.id].location.lng,
+        client_id:ClientID,
+        client_secret:ClientSecret,
+        v:ClientVersion
+       // near:"Fresno CA",
+        //query:"Restaurant"
+        }
+      }).done(function(data) {
+        console.log(data);
+        console.log("====after ajax=  " + marker.id + ":" + locations[marker.id].title + "==" + locations[marker.id].location.lat + "," + locations[marker.id].location.lng);    
+        //var results = data.response.venues[0];
+        console.log("Before resURL " + data.response.venues[0].url);
+
+        resURL =  data.response.venues[0].url;
+        console.log("resURL: " + resURL)
+        if (typeof data.response.venues[0].url === 'undefined'){
+          resURL = "";
+        }
+        resStreet = data.response.venues[0].location.formattedAddress[0];
+        resCity = data.response.venues[0].location.formattedAddress[1];
+        resPhone = formatPhone(data.response.venues[0].contact.phone);
+        if (typeof data.response.venues[0].contact.phone === 'undefined'){
+          resPhone = "";
+        } 
+        console.log(resPhone + " : " + resURL);
+        console.log("infowindow variable before set:" + infoWindowString);
+        infoWindowString = '<div class="infoWindow> ' +
+              '<div class="contentTitle"><h3><a href="' + resURL +'">' + locations[marker.id].title + "</a></h3></div>" +
+              '<div class="content"><u>' + resStreet + '</u></div>' +
+              '<div class="content">' + resCity + '</div>' +
+              '<div class="content">' + resPhone + '</div></div>';
+        //infowindow.setContent(infoWindowString);
+        console.log("infowindow variable after set:" + infoWindowString);
+        infowindow.setContent(infoWindowString);
+        console.log("================================================");
+      }).fail(function() {
+        alert("An error ocurred with Foursquare API call. Try to refresh page reload Foursquare data.");
+      });
+
+    console.log("== populateInfoWindow after getFoursquareInfo---------- " + infoWindowString)
+    //infowindow.setContent(infoWindowString);
+
     stopAnimation(marker, infowindow);
     marker.setIcon('http://maps.google.com/mapfiles/ms/icons/green-dot.png')
     // Make sure the marker property is cleared if the infowindow is closed.
@@ -88,7 +151,7 @@ function showListings() {
   // Extend the boundaries of the map for each marker and display the marker
   hideListings();
   for (var i = 0; i < markers.length; i++) {
-    if (filter.value == "All Locations" || filter.value == locations[i].group){
+    if (filter.value == "All Types" || filter.value == locations[i].group){
       markers[i].setMap(map);
       bounds.extend(markers[i].position);
     }
@@ -113,102 +176,70 @@ function selectClickedName(index) {
     }
 }
 
-
-
-
 //udacity help credit: https://discussions.udacity.com/t/how-do-i-use-foursquare-api/210274/5
+//also Udacity's Karol on 1:1
 // Foursquare API settings
+function getFoursquareInfo(marker,infowindow){
+  
+  var apiURL = 'https://api.foursquare.com/v2/venues/search';//?ll=';
+  var ClientID = "LJXW25X1PJ2PRLWV3BOLXAFLBRW0K2SM3FXEWWE4D2S2BCU2";
+  var ClientSecret ="MBLBOVBFP5MNCPIRNKWSXJ01OZWHJG1DUWVUX4Y1V3Q4CTNW";
+  var ClientVersion = '20170112';
+  
+  console.log("====before ajax=  " + marker.id + ":" + locations[marker.id].title + "==" + locations[marker.id].location.lat + "," + locations[marker.id].location.lng);
+  $.ajax({
+    url:apiURL,
+    dataType:"json",
+    data:{
+      ll:locations[marker.id].location.lat + "," + locations[marker.id].location.lng,
+      client_id:ClientID,
+      client_secret:ClientSecret,
+      v:ClientVersion
+     // near:"Fresno CA",
+      //query:"Restaurant"
+      }
+    }).done(function(data) {
+      console.log(data);
+      console.log("====after ajax=  " + marker.id + ":" + locations[marker.id].title + "==" + locations[marker.id].location.lat + "," + locations[marker.id].location.lng);    
+      //var results = data.response.venues[0];
+      console.log("Before resURL " + data.response.venues[0].url);
 
-var apiURL = 'https://api.foursquare.com/v2/venues/"';
-var ClientID = "LJXW25X1PJ2PRLWV3BOLXAFLBRW0K2SM3FXEWWE4D2S2BCU2";
-var ClientSecret ="MBLBOVBFP5MNCPIRNKWSXJ01OZWHJG1DUWVUX4Y1V3Q4CTNW";
-var ClientVersion = '20170112';
+      resURL =  data.response.venues[0].url;
+      console.log("resURL: " + resURL)
+      if (typeof data.response.venues[0].url === 'undefined'){
+        resURL = "";
+      }
+      resStreet = data.response.venues[0].location.formattedAddress[0];
+      resCity = data.response.venues[0].location.formattedAddress[1];
+      resPhone = formatPhone(data.response.venues[0].contact.phone);
+      if (typeof data.response.venues[0].contact.phone === 'undefined'){
+        resPhone = "";
+      } 
+      console.log(resPhone + " : " + resURL);
+      console.log("infowindow variable before set:" + infoWindowString);
+      infoWindowString = '<div class="infoWindow> ' +
+            '<div class="contentTitle"><h3><a href="' + resURL +'">' + locations[marker.id].title + "</a></h3></div>" +
+            '<div class="content"><u>' + resStreet + '</u></div>' +
+            '<div class="content">' + resCity + '</div>' +
+            '<div class="content">' + resPhone + '</div></div>';
+      //infowindow.setContent(infoWindowString);
+      console.log("infowindow variable after set:" + infoWindowString);
+      infowindow.setContent(infoWindowString);
+console.log("================================================");
+    }).fail(function() {
+      alert("An error ocurred with Foursquare API call. Try to refresh page reload Foursquare data.");
+    });
 
-var foursquareURL = apiURL + markers[1] + '?client_id=' 
-                    + ClientID +  '&client_secret=' 
-                    + ClientSecret +'&v=' + ClientVersion;
-
-$.ajax({
-  url: foursquareURL, dataType: "json",
-  success: function(data) {
-    console.log(data);
-  } 
-});
-
-// Make AJAX request to Foursquare
-$.ajax({
-    url: 'https://api.foursquare.com/v2/venues/' + markers[1].id() +
-    '?client_id=NONGGLXBKX5VFFIKKEK1HXQPFAFVMEBTRXBWJUPEN4K14JUE&client_secret=ZZDD1SLJ4PA2X4AJ4V23OOZ53UM4SFZX0KORGWP5TZDK4YYJ&v=20130815',
-    dataType: "json",
-    success: function (data) {
-        // Make results easier to handle
-        var result = data.response.venue;
-
-        // placeItem.name(result.name);
-
-        // The following lines handle inconsistent results from Foursquare
-        // Check each result for properties, if the property exists,
-        // add it to the Place constructor
-        // Credit https://discussions.udacity.com/t/foursquare-results-undefined-until-the-second-click-on-infowindow/39673/2
-        var contact = result.hasOwnProperty('contact') ? result.contact : '';
-        if (contact.hasOwnProperty('formattedPhone')) {
-            placeItem.phone(contact.formattedPhone || '');
-        }
-
-        var location = result.hasOwnProperty('location') ? result.location : '';
-        if (location.hasOwnProperty('address')) {
-            placeItem.address(location.address || '');
-        }
-
-        var bestPhoto = result.hasOwnProperty('bestPhoto') ? result.bestPhoto : '';
-        if (bestPhoto.hasOwnProperty('prefix')) {
-            placeItem.photoPrefix(bestPhoto.prefix || '');
-        }
-
-        if (bestPhoto.hasOwnProperty('suffix')) {
-            placeItem.photoSuffix(bestPhoto.suffix || '');
-        }
-
-        var description = result.hasOwnProperty('description') ? result.description : '';
-        placeItem.description(description || '');
-
-        var rating = result.hasOwnProperty('rating') ? result.rating : '';
-        placeItem.rating(rating || 'none');
-
-        var url = result.hasOwnProperty('url') ? result.url : '';
-        placeItem.url(url || '');
-
-        placeItem.canonicalUrl(result.canonicalUrl);
-
-        // Infowindow code is in the success function so that the error message
-        // displayed in infowindow works properly, instead of a mangled infowindow
-        // Credit https://discussions.udacity.com/t/trouble-with-infowindows-and-contentstring/39853/14
-
-        // Content of the infowindow
-        var contentString = '<div id="iWindow"><h4>' + placeItem.name() + '</h4><div id="pic"><img src="' +
-                placeItem.photoPrefix() + '110x110' + placeItem.photoSuffix() +
-                '" alt="Image Location"></div><p>Information from Foursquare:</p><p>' +
-                placeItem.phone() + '</p><p>' + placeItem.address() + '</p><p>' +
-                placeItem.description() + '</p><p>Rating: ' + placeItem.rating() +
-                '</p><p><a href=' + placeItem.url() + '>' + placeItem.url() +
-                '</a></p><p><a target="_blank" href=' + placeItem.canonicalUrl() +
-                '>Foursquare Page</a></p><p><a target="_blank" href=https://www.google.com/maps/dir/Current+Location/' +
-                placeItem.lat() + ',' + placeItem.lng() + '>Directions</a></p></div>';
-
-        // Add infowindows credit http://you.arenot.me/2010/06/29/google-maps-api-v3-0-multiple-markers-multiple-infowindows/
-        google.maps.event.addListener(placeItem.marker, 'click', function () {
-            infowindow.open(map, this);
-            // Bounce animation credit https://github.com/Pooja0131/FEND-Neighbourhood-Project5a/blob/master/js/app.js
-            placeItem.marker.setAnimation(google.maps.Animation.BOUNCE);
-            setTimeout(function () {
-                placeItem.marker.setAnimation(null);
-            }, 500);
-            infowindow.setContent(contentString);
-        });
-    },
-    // Alert the user on error. Set messages in the DOM and infowindow
-    error: function (e) {
-        infowindow.setContent('<h5>Foursquare data is unavailable. Please try refreshing later.</h5>');
-        document.getElementById("error").innerHTML = "<h4>Foursquare data is unavailable. Please try refreshing later.</h4>";
+}
+/* code credit for format function:
+http://stackoverflow.com/questions/8358084/regular-expression-to-reformat-a-us-phone-number-in-javascript  */
+function formatPhone(phone) {
+    //normalize string and remove all unnecessary characters
+    phone = phone.replace(/[^\d]/g, "");
+    //check if number length equals to 10
+    if (phone.length == 10) {
+        //reformat and return phone number
+        return phone.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3");
     }
-});
+    return null;
+}
