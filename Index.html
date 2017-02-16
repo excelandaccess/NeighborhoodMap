@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
-    <script src="js/script.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body>
     <div class="container">
@@ -20,23 +20,49 @@
         </div>
         <div id="loc-listings">
         </div>
+
+
+        <main class="row">
+          <div class="col-xs-12">
+            <select data-bind="options: foodGroups,
+                               optionsCaption: 'Choose category to filter',
+                               value: selectedCategory,
+                               valueAllowUnset: true"></select>
+          </div>
+
+          <div class="col-xs-12">
+            <ul data-bind="foreach: filterFood">
+              <li><a onclick="selectClickedNameJSON('Casa Corona')">
+                <span data-bind="text: $data.title"></span> (<span data-bind="text: $data.group"></span>)
+                  </a>
+              </li>
+            </ul>
+          </div>    
+        </main>
+
       </div>
       <div id="map"></div>
     </div>
     <!-- Load drop down filter and 
          list of all locations -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.1/knockout-min.js"></script> -->
+    <script src="js/knockout-3.4.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="js/script.js"></script>
     <script>
       document.getElementById('filter').addEventListener('change', displaylist);
       document.getElementById('filter').addEventListener('change', showListings);
       displaylist();
+
     </script>
 <!--
     <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
 -->
     <!-- Load Google Maps asynchronously credit https://discussions.udacity.com/t/handling-google-maps-in-async-and-fallback/34282 -->
-    <script async defer 
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUNm-fO01vgE5Y-jgkyncEMbbvvxUwmt8&v=3&callback=initMap" onerror="googleError()">
-    
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUNm-fO01vgE5Y-jgkyncEMbbvvxUwmt8&v=3&callback=initMap" onerror="googleError()">
     </script>
+
+    <!--     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUNm-fO01vgE5Y-jgkyncEMbbvvxUwmt8&v=3&callback=startApp" onerror="googleError()">
+    </script> -->
   </body>
 </html>

@@ -1,4 +1,3 @@
-
 var map;
 var markers = [];
 var mainInfowindow;
@@ -8,7 +7,7 @@ var resURL;
   var resCity ;
   var resPhone;
 
-var locations = [
+var locJSON = [
   {title: "Sal's", group: 'Burritos', location: {lat: 36.845671, lng: -119.783075}},
   {title: 'Casa Corona', group: 'Burritos', location: {lat: 36.838776646609254, lng: -119.75295066833496}},
   {title: 'The Habit Burger Grill', group: 'Hamburgers', location: {lat: 36.858096,lng:-119.783509}},
@@ -20,17 +19,58 @@ var locations = [
       
 function displaylist(){
   var displayList = "";
-  for (var i = 0; i < locations.length; i++) {
-    if (filter.value == "All Types" || filter.value == locations[i].group) {
-      displayList += "<li><a onclick='selectClickedName(" + i + ")'>" + locations[i].title + "</a></li>";
+  for (var i = 0; i < locJSON.length; i++) {
+    if (filter.value == "All Types" || filter.value == locJSON[i].group) {
+      displayList += "<li><a onclick='selectClickedName(" + i + ")'>" + locJSON[i].title + "</a></li>";
     }
   }
   document.getElementById("loc-listings").innerHTML = "<ul>" + displayList + "</ul>";
 }
 
 
+  /**
+   * Knockout ViewModel class
+   */
+  class ViewModel {
+    constructor() {
+      this.categoryList = [];
+
+      // dynamically retrieve categories to
+      // create drop down list later
+      locJSON.map(food => {
+        if (!this.categoryList.includes(food.group))
+          this.categoryList.push(food.group);
+      });
+
+      this.foodArray = ko.observableArray(locJSON);
+      // Observable Array for drop down list
+      this.foodGroups = ko.observableArray(this.categoryList); 
+      // This will hold the selected value from drop down menu
+      this.selectedCategory = ko.observable(); 
+
+      /**
+       * Filter function, return filtered food by
+       * selected category from <select>
+       */
+      this.filterFood = ko.computed(() => {
+        if (!this.selectedCategory()) {
+          // No input found, return all food
+          return this.foodArray();
+        } else {
+          // input found, match food type to filter
+          return ko.utils.arrayFilter(this.foodArray(), (food) => {
+            return ( food.group === this.selectedCategory() );
+          });
+        } //.conditional
+      }); //.filterFood 
+    } //.constructor
+  }; //.class
+
+
 function initMap() {
   // Create a new map; only center and zoom are required.
+  ko.applyBindings(new ViewModel());
+
   map = new google.maps.Map(document.getElementById('map'), {
     center: {lat: 36.848624, lng: -119.755932},
     zoom: 10,
@@ -38,10 +78,10 @@ function initMap() {
   mainInfowindow = new google.maps.InfoWindow();
 
   //Create markers for each location
-  for (var i = 0; i < locations.length; i++) {
+  for (var i = 0; i < locJSON.length; i++) {
     // Get the position from the location
-    var position = locations[i].location;
-    var title = locations[i].title;
+    var position = locJSON[i].location;
+    var title = locJSON[i].title;
     var marker = new google.maps.Marker({
       position: position,
       title: title,
@@ -60,6 +100,7 @@ function initMap() {
   showListings();
 }
 
+
 // Sets timer for animation;
 function stopAnimation(marker, infowindow) {
     setTimeout(function () {
@@ -69,7 +110,7 @@ function stopAnimation(marker, infowindow) {
     setTimeout(function () {
         infowindow.close();
         marker.setIcon(infowindow.marker.defaultMarkerIcon);
-    }, 8000);
+    }, 5000);
 }
 
 function populateInfoWindow(marker, infowindow) {
@@ -80,7 +121,7 @@ function populateInfoWindow(marker, infowindow) {
  
   // Checks if infowindow is not already opened on this marker
   if (infowindow.marker != marker) {
-    
+    infowindow.setContent('');//clear window so it doesn't show prev click's info
     console.log("before bounce");
 
     infowindow.marker = marker;
@@ -89,12 +130,12 @@ function populateInfoWindow(marker, infowindow) {
     infowindow.marker.setAnimation(google.maps.Animation.BOUNCE);
     console.log("== populateInfoWindow before getFoursquareInfo-------------- " + infoWindowString)
     //getFoursquareInfo(marker,infowindow);//Get foursquare info
-    console.log("====before ajax=  " + marker.id + ":" + locations[marker.id].title + "==" + locations[marker.id].location.lat + "," + locations[marker.id].location.lng);
+    console.log("====before ajax=  " + marker.id + ":" + locJSON[marker.id].title + "==" + locJSON[marker.id].location.lat + "," + locJSON[marker.id].location.lng);
     $.ajax({
       url:apiURL,
       dataType:"json",
       data:{
-        ll:locations[marker.id].location.lat + "," + locations[marker.id].location.lng,
+        ll:locJSON[marker.id].location.lat + "," + locJSON[marker.id].location.lng,
         client_id:ClientID,
         client_secret:ClientSecret,
         v:ClientVersion
@@ -103,7 +144,7 @@ function populateInfoWindow(marker, infowindow) {
         }
       }).done(function(data) {
         console.log(data);
-        console.log("====after ajax=  " + marker.id + ":" + locations[marker.id].title + "==" + locations[marker.id].location.lat + "," + locations[marker.id].location.lng);    
+        console.log("====after ajax=  " + marker.id + ":" + locJSON[marker.id].title + "==" + locJSON[marker.id].location.lat + "," + locJSON[marker.id].location.lng);    
         //var results = data.response.venues[0];
         console.log("Before resURL " + data.response.venues[0].url);
 
@@ -121,7 +162,7 @@ function populateInfoWindow(marker, infowindow) {
         console.log(resPhone + " : " + resURL);
         console.log("infowindow variable before set:" + infoWindowString);
         infoWindowString = '<div class="infoWindow> ' +
-              '<div class="contentTitle"><h3><a href="' + resURL +'">' + locations[marker.id].title + "</a></h3></div>" +
+              '<div class="contentTitle"><h3><a href="' + resURL +'">' + locJSON[marker.id].title + "</a></h3></div>" +
               '<div class="content"><u>' + resStreet + '</u></div>' +
               '<div class="content">' + resCity + '</div>' +
               '<div class="content">' + resPhone + '</div></div>';
@@ -132,6 +173,7 @@ function populateInfoWindow(marker, infowindow) {
       }).fail(function() {
         alert("An error ocurred with Foursquare API call. Try to refresh page reload Foursquare data.");
       });
+    
 
     console.log("== populateInfoWindow after getFoursquareInfo---------- " + infoWindowString)
     //infowindow.setContent(infoWindowString);
@@ -151,7 +193,7 @@ function showListings() {
   // Extend the boundaries of the map for each marker and display the marker
   hideListings();
   for (var i = 0; i < markers.length; i++) {
-    if (filter.value == "All Types" || filter.value == locations[i].group){
+    if (filter.value == "All Types" || filter.value == locJSON[i].group){
       markers[i].setMap(map);
       bounds.extend(markers[i].position);
     }
@@ -169,68 +211,30 @@ function hideListings() {
 //Selected from Menu list; click marker
 function selectClickedName(index) {
 //  console.log("index: " + index);
-    for (var i = 0; i < locations.length; i++) {
+    for (var i = 0; i < locJSON.length; i++) {
       if (i == index) {
         populateInfoWindow(markers[i],mainInfowindow);
       }
     }
 }
 
-//udacity help credit: https://discussions.udacity.com/t/how-do-i-use-foursquare-api/210274/5
-//also Udacity's Karol on 1:1
-// Foursquare API settings
-function getFoursquareInfo(marker,infowindow){
-  
-  var apiURL = 'https://api.foursquare.com/v2/venues/search';//?ll=';
-  var ClientID = "LJXW25X1PJ2PRLWV3BOLXAFLBRW0K2SM3FXEWWE4D2S2BCU2";
-  var ClientSecret ="MBLBOVBFP5MNCPIRNKWSXJ01OZWHJG1DUWVUX4Y1V3Q4CTNW";
-  var ClientVersion = '20170112';
-  
-  console.log("====before ajax=  " + marker.id + ":" + locations[marker.id].title + "==" + locations[marker.id].location.lat + "," + locations[marker.id].location.lng);
-  $.ajax({
-    url:apiURL,
-    dataType:"json",
-    data:{
-      ll:locations[marker.id].location.lat + "," + locations[marker.id].location.lng,
-      client_id:ClientID,
-      client_secret:ClientSecret,
-      v:ClientVersion
-     // near:"Fresno CA",
-      //query:"Restaurant"
+//Selected from Menu list; click marker
+function selectClickedNameJSON(titleJSON) {
+//  console.log("index: " + index);
+    for (var i = 0; i < locJSON.length; i++) {
+      if (markers[i].title == titleJSON) {
+        populateInfoWindow(markers[i],mainInfowindow);
       }
-    }).done(function(data) {
-      console.log(data);
-      console.log("====after ajax=  " + marker.id + ":" + locations[marker.id].title + "==" + locations[marker.id].location.lat + "," + locations[marker.id].location.lng);    
-      //var results = data.response.venues[0];
-      console.log("Before resURL " + data.response.venues[0].url);
-
-      resURL =  data.response.venues[0].url;
-      console.log("resURL: " + resURL)
-      if (typeof data.response.venues[0].url === 'undefined'){
-        resURL = "";
-      }
-      resStreet = data.response.venues[0].location.formattedAddress[0];
-      resCity = data.response.venues[0].location.formattedAddress[1];
-      resPhone = formatPhone(data.response.venues[0].contact.phone);
-      if (typeof data.response.venues[0].contact.phone === 'undefined'){
-        resPhone = "";
-      } 
-      console.log(resPhone + " : " + resURL);
-      console.log("infowindow variable before set:" + infoWindowString);
-      infoWindowString = '<div class="infoWindow> ' +
-            '<div class="contentTitle"><h3><a href="' + resURL +'">' + locations[marker.id].title + "</a></h3></div>" +
-            '<div class="content"><u>' + resStreet + '</u></div>' +
-            '<div class="content">' + resCity + '</div>' +
-            '<div class="content">' + resPhone + '</div></div>';
-      //infowindow.setContent(infoWindowString);
-      console.log("infowindow variable after set:" + infoWindowString);
-      infowindow.setContent(infoWindowString);
-console.log("================================================");
-    }).fail(function() {
-      alert("An error ocurred with Foursquare API call. Try to refresh page reload Foursquare data.");
-    });
-
+    }
 }
+/*function startApp() {
+  ko.applyBindings(new AppViewModel());
+}*/
+
+function googleError() {
+  alert("Google Maps has failed to load. Please check your internet connection and try again.");
+}
+
 /* code credit for format function:
 http://stackoverflow.com/questions/8358084/regular-expression-to-reformat-a-us-phone-number-in-javascript  */
 function formatPhone(phone) {
