@@ -3,9 +3,10 @@ var markers = [];
 var mainInfowindow;
 var infoWindowString ; //holds string for selected marker
 var resURL;
-  var resStreet;
-  var resCity ;
-  var resPhone;
+var resStreet;
+var resCity ;
+var resPhone;
+var map;
 
 var locJSON = [
   {title: "Sal's", group: 'Burritos', location: {lat: 36.845671, lng: -119.783075}},
@@ -16,23 +17,12 @@ var locJSON = [
   {title: 'BJ Brewhouse Restaurant', group: 'Hamburgers', location: {lat: 36.808439, lng: -119.774648}}         
 ];
 
-      
-function displaylist(){
-  var displayList = "";
-  for (var i = 0; i < locJSON.length; i++) {
-    if (filter.value == "All Types" || filter.value == locJSON[i].group) {
-      displayList += "<li><a onclick='selectClickedName(" + i + ")'>" + locJSON[i].title + "</a></li>";
-    }
-  }
-  document.getElementById("loc-listings").innerHTML = "<ul>" + displayList + "</ul>";
-}
-
-
   /**
    * Knockout ViewModel class
    */
   class ViewModel {
     constructor() {
+      var self = this;
       this.categoryList = [];
 
       // dynamically retrieve categories to
@@ -55,21 +45,34 @@ function displaylist(){
       this.filterFood = ko.computed(() => {
         if (!this.selectedCategory()) {
           // No input found, return all food
+
           return this.foodArray();
         } else {
-          // input found, match food type to filter
-          return ko.utils.arrayFilter(this.foodArray(), (food) => {
-            return ( food.group === this.selectedCategory() );
+          // input found, match food type to filter 
+          //console.log("==================="+self.selectedCategory());
+          showListings(self.selectedCategory());
+          return ko.utils.arrayFilter(this.foodArray(), function(food) {
+            if ( food.group === self.selectedCategory() ) {
+                return true;
+              } else {
+                return false;
+              }
           });
-        } //.conditional
-      }); //.filterFood 
+        } //.conditional  someMarker.setVisible(true);
+
+      }); //.filterFood
+      this.listItemClick = function(data) {
+        populateInfoWindow(data.marker, mainInfowindow);
+      }
     } //.constructor
   }; //.class
 
+var vm;
 
 function initMap() {
   // Create a new map; only center and zoom are required.
-  ko.applyBindings(new ViewModel());
+  vm = new ViewModel();
+  ko.applyBindings(vm);
 
   map = new google.maps.Map(document.getElementById('map'), {
     center: {lat: 36.848624, lng: -119.755932},
@@ -78,26 +81,29 @@ function initMap() {
   mainInfowindow = new google.maps.InfoWindow();
 
   //Create markers for each location
-  for (var i = 0; i < locJSON.length; i++) {
+  for (var i = 0; i < vm.foodArray().length; i++) {
     // Get the position from the location
-    var position = locJSON[i].location;
-    var title = locJSON[i].title;
+    var position = vm.foodArray()[i].location;
+    var title = vm.foodArray()[i].title;
     var marker = new google.maps.Marker({
       position: position,
       title: title,
       animation: google.maps.Animation.DROP,
-      id: i
+      id: i,
+      map: map
     });
     console.log("markerID=" + marker.id + "; i="+i + title);
     // Push the marker to our array of markers.
     markers.push(marker);
+
+    vm.foodArray()[i].marker = marker;
     // Create an onclick event to open an infowindow at each marker.
     marker.addListener('click', function() {
       console.log("addListener: this title" + this.title);
       populateInfoWindow(this, mainInfowindow);
     });
   }
-  showListings();
+  showListings('Choose category to filter');
 }
 
 
@@ -105,12 +111,9 @@ function initMap() {
 function stopAnimation(marker, infowindow) {
     setTimeout(function () {
         marker.setAnimation(null);
-    }, 2000);
-    // Sets 2nd timer o close infowindow and set marker to default
-    setTimeout(function () {
-        infowindow.close();
-        marker.setIcon(infowindow.marker.defaultMarkerIcon);
-    }, 5000);
+         marker.setIcon(infowindow.marker.defaultMarkerIcon);
+    }, 2100);//credit udacity reviewer:  multiple the desired number of bounces by 700 ms. So if you want 2 bounces, use 1400 ms.
+             //Sets 2nd timer o close infowindow and set marker to default
 }
 
 function populateInfoWindow(marker, infowindow) {
@@ -121,16 +124,13 @@ function populateInfoWindow(marker, infowindow) {
  
   // Checks if infowindow is not already opened on this marker
   if (infowindow.marker != marker) {
-    infowindow.setContent('');//clear window so it doesn't show prev click's info
-    console.log("before bounce");
-
     infowindow.marker = marker;
     infowindow.open(map, marker);
+    //infowindow.setContent('Loading...');//clear window so it doesn't show prev click's info
+    infowindow.setContent("<i class='fa fa-spinner fa-spin fa-3x fa-fw'></i><span class='sr-only'>Loading...</span>");
 
     infowindow.marker.setAnimation(google.maps.Animation.BOUNCE);
-    console.log("== populateInfoWindow before getFoursquareInfo-------------- " + infoWindowString)
-    //getFoursquareInfo(marker,infowindow);//Get foursquare info
-    console.log("====before ajax=  " + marker.id + ":" + locJSON[marker.id].title + "==" + locJSON[marker.id].location.lat + "," + locJSON[marker.id].location.lng);
+    //console.log("== populateInfoWindow before getFoursquareInfo-------------- " + infoWindowString)
     $.ajax({
       url:apiURL,
       dataType:"json",
@@ -143,13 +143,7 @@ function populateInfoWindow(marker, infowindow) {
         //query:"Restaurant"
         }
       }).done(function(data) {
-        console.log(data);
-        console.log("====after ajax=  " + marker.id + ":" + locJSON[marker.id].title + "==" + locJSON[marker.id].location.lat + "," + locJSON[marker.id].location.lng);    
-        //var results = data.response.venues[0];
-        console.log("Before resURL " + data.response.venues[0].url);
-
         resURL =  data.response.venues[0].url;
-        console.log("resURL: " + resURL)
         if (typeof data.response.venues[0].url === 'undefined'){
           resURL = "";
         }
@@ -159,24 +153,15 @@ function populateInfoWindow(marker, infowindow) {
         if (typeof data.response.venues[0].contact.phone === 'undefined'){
           resPhone = "";
         } 
-        console.log(resPhone + " : " + resURL);
-        console.log("infowindow variable before set:" + infoWindowString);
         infoWindowString = '<div class="infoWindow> ' +
               '<div class="contentTitle"><h3><a href="' + resURL +'">' + locJSON[marker.id].title + "</a></h3></div>" +
               '<div class="content"><u>' + resStreet + '</u></div>' +
               '<div class="content">' + resCity + '</div>' +
               '<div class="content">' + resPhone + '</div></div>';
-        //infowindow.setContent(infoWindowString);
-        console.log("infowindow variable after set:" + infoWindowString);
         infowindow.setContent(infoWindowString);
-        console.log("================================================");
       }).fail(function() {
         alert("An error ocurred with Foursquare API call. Try to refresh page reload Foursquare data.");
       });
-    
-
-    console.log("== populateInfoWindow after getFoursquareInfo---------- " + infoWindowString)
-    //infowindow.setContent(infoWindowString);
 
     stopAnimation(marker, infowindow);
     marker.setIcon('http://maps.google.com/mapfiles/ms/icons/green-dot.png')
@@ -188,13 +173,19 @@ function populateInfoWindow(marker, infowindow) {
 }
 
 // Loops and Displays all markers
-function showListings() {
+function showListings(selGroup) {
   var bounds = new google.maps.LatLngBounds();
   // Extend the boundaries of the map for each marker and display the marker
+  //selectedCategory.value == "Choose category to filter" ||
   hideListings();
   for (var i = 0; i < markers.length; i++) {
-    if (filter.value == "All Types" || filter.value == locJSON[i].group){
+    console.log("compare..."+ selGroup + "  vs " + locJSON[i].group);
+    if (selGroup == 'Choose category to filter'||selGroup == locJSON[i].group){  
       markers[i].setMap(map);
+      bounds.extend(markers[i].position);
+    }
+    else {
+      markers[i].setMap(null);
       bounds.extend(markers[i].position);
     }
   }
@@ -208,7 +199,7 @@ function hideListings() {
   }
 }
 
-//Selected from Menu list; click marker
+/*//Selected from Menu list; click marker
 function selectClickedName(index) {
 //  console.log("index: " + index);
     for (var i = 0; i < locJSON.length; i++) {
@@ -226,7 +217,7 @@ function selectClickedNameJSON(titleJSON) {
         populateInfoWindow(markers[i],mainInfowindow);
       }
     }
-}
+}*/
 /*function startApp() {
   ko.applyBindings(new AppViewModel());
 }*/
