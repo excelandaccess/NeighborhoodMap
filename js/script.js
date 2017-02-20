@@ -1,3 +1,4 @@
+'use strict';
 var map;
 var markers = [];
 var mainInfowindow;
@@ -6,7 +7,6 @@ var resURL;
 var resStreet;
 var resCity ;
 var resPhone;
-var map;
 
 var locJSON = [
   {title: "Sal's", group: 'Burritos', location: {lat: 36.845671, lng: -119.783075}},
@@ -45,7 +45,8 @@ var locJSON = [
       this.filterFood = ko.computed(() => {
         if (!this.selectedCategory()) {
           // No input found, return all food
-
+          console.log("Want to call showlistings for all markers");
+          //showListings('Choose category to filter');
           return this.foodArray();
         } else {
           // input found, match food type to filter 
@@ -59,7 +60,6 @@ var locJSON = [
               }
           });
         } //.conditional  someMarker.setVisible(true);
-
       }); //.filterFood
       this.listItemClick = function(data) {
         populateInfoWindow(data.marker, mainInfowindow);
@@ -164,7 +164,7 @@ function populateInfoWindow(marker, infowindow) {
       });
 
     stopAnimation(marker, infowindow);
-    marker.setIcon('http://maps.google.com/mapfiles/ms/icons/green-dot.png')
+    marker.setIcon('http://maps.google.com/mapfiles/ms/icons/green-dot.png');
     // Make sure the marker property is cleared if the infowindow is closed.
     infowindow.addListener('closeclick', function() {
       infowindow.marker = null;
@@ -180,12 +180,15 @@ function showListings(selGroup) {
   hideListings();
   for (var i = 0; i < markers.length; i++) {
     console.log("compare..."+ selGroup + "  vs " + locJSON[i].group);
-    if (selGroup == 'Choose category to filter'||selGroup == locJSON[i].group){  
-      markers[i].setMap(map);
+    console.log("index:"+ i + "  position " + markers[i].position);
+    if (selGroup == "Choose category to filter"||selGroup == locJSON[i].group){  
+      //markers[i].setMap(map);
+      markers[i].setVisible(true);
       bounds.extend(markers[i].position);
     }
     else {
-      markers[i].setMap(null);
+      markers[i].setVisible(false);
+//      markers[i].setMap(null);
       bounds.extend(markers[i].position);
     }
   }
@@ -195,32 +198,10 @@ function showListings(selGroup) {
 // Loops and Hides all markers
 function hideListings() {
   for (var i = 0; i < markers.length; i++) {
-    markers[i].setMap(null);
+    //markers[i].setMap(null);
+    markers[i].setVisible(false);
   }
 }
-
-/*//Selected from Menu list; click marker
-function selectClickedName(index) {
-//  console.log("index: " + index);
-    for (var i = 0; i < locJSON.length; i++) {
-      if (i == index) {
-        populateInfoWindow(markers[i],mainInfowindow);
-      }
-    }
-}
-
-//Selected from Menu list; click marker
-function selectClickedNameJSON(titleJSON) {
-//  console.log("index: " + index);
-    for (var i = 0; i < locJSON.length; i++) {
-      if (markers[i].title == titleJSON) {
-        populateInfoWindow(markers[i],mainInfowindow);
-      }
-    }
-}*/
-/*function startApp() {
-  ko.applyBindings(new AppViewModel());
-}*/
 
 function googleError() {
   alert("Google Maps has failed to load. Please check your internet connection and try again.");
